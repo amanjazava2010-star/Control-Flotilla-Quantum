@@ -38,6 +38,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+import { stripUndefinedDeep } from "@/lib/firestoreSanitize";
 import { auth, db } from "@/lib/firebase";
 import {
   onAuthStateChanged,
@@ -411,21 +412,22 @@ export default function Page() {
     const ref = doc(db, DISPATCH_COLLECTION, DISPATCH_DOC_ID);
 
     try {
-      await setDoc(
-        ref,
-        {
-          vehicles: nextVehicles,
-          tx: nextTx.slice(0, 200),
-          updatedAt: serverTimestamp(),
-          updatedBy: actorLabel,
-        },
-        { merge: true }
-      );
-    } catch (e: any) {
-      const msg = e?.message || "Error escribiendo en Firestore";
-      setDbError(msg);
-      // Si eres viewer, esto puede ser "Missing or insufficient permissions"
-    }
+  await setDoc(
+    ref,
+    stripUndefinedDeep({
+      vehicles: nextVehicles,
+      tx: nextTx.slice(0, 200),
+      updatedAt: serverTimestamp(),
+      updatedBy: actorLabel ?? "unknown",
+    }),
+    { merge: true }
+  );
+} catch (e: any) {
+  const msg = e?.message || "Error escribiendo en Firestore";
+  setDbError(msg);
+  // Si eres viewer, esto puede ser "Missing or insufficient permissions"
+}
+
   }
 
   function makeTx(type: TxType, vehicleId: string, summary: string): Transaction {
@@ -463,21 +465,24 @@ export default function Page() {
   }
 
   // ===================== Actions (admin) =====================
-  async function initDocIfMissing() {
-    if (!user) return;
-    const ref = doc(db, DISPATCH_COLLECTION, DISPATCH_DOC_ID);
-    try {
-      await setDoc(ref, {
+ async function initDocIfMissing() {
+  if (!user) return;
+  const ref = doc(db, DISPATCH_COLLECTION, DISPATCH_DOC_ID);
+  try {
+    await setDoc(
+      ref,
+      stripUndefinedDeep({
         vehicles: INITIAL_VEHICLES,
         tx: [],
         createdAt: serverTimestamp(),
-        createdBy: actorLabel,
-      });
-      setDocMissing(false);
-    } catch (e: any) {
-      setDbError(e?.message || "Error inicializando documento en Firestore");
-    }
+        createdBy: actorLabel ?? "unknown",
+      })
+    );
+    setDocMissing(false);
+  } catch (e: any) {
+    setDbError(e?.message || "Error inicializando documento en Firestore");
   }
+}
 
   async function checkout() {
     if (!selectedVehicle) return;
