@@ -43,6 +43,8 @@ import { auth, db } from "@/lib/firebase";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
   signOut,
   User as FirebaseUser,
 } from "firebase/auth";
@@ -710,11 +712,36 @@ export default function Page() {
   async function doLogin() {
     setAuthError(null);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), pass);
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
+
+      if (!cred.user.emailVerified) {
+        await signOut(auth);
+        setAuthError("Tu correo aún no está verificado. Revisa tu email y vuelve a intentar.");
+        return;
+      }
     } catch (e: any) {
       setAuthError(e?.message || "Error de login");
     }
   }
+
+  async function doSignUp() {
+    setAuthError(null);
+
+    const e = email.trim().toLowerCase();
+    if (!e.endsWith("@quantumeventstechnology.com")) {
+      setAuthError("Solo se permite registro con correo @quantumeventstechnology.com");
+      return;
+    }
+
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, e, pass);
+    await sendEmailVerification(cred.user);
+    await signOut(auth);
+    setAuthError("Cuenta creada. Revisa tu correo para verificar y luego inicia sesión.");
+  } catch (e: any) {
+    setAuthError(e?.message || "Error al crear cuenta");
+  }
+}
 
   async function doLogout() {
     await signOut(auth);
@@ -764,6 +791,16 @@ export default function Page() {
               <Button className="w-full" onClick={doLogin} disabled={!email.trim() || !pass}>
                 Ingresar
               </Button>
+              
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={doSignUp}
+                disabled={!email.trim() || !pass}
+              >
+                Crear cuenta
+              </Button>
+
             </CardContent>
           </Card>
         </div>
