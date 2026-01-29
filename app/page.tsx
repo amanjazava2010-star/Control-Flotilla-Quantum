@@ -720,9 +720,10 @@ export default function Page() {
         return;
       }
     } catch (e: any) {
-      setAuthError(e?.message || "Error de login");
+      setAuthError(e?.message || "Error de login");  
     }
   }
+
 
   async function doSignUp() {
     setAuthError(null);
@@ -739,13 +740,16 @@ export default function Page() {
     await signOut(auth);
     setAuthError("Cuenta creada. Revisa tu correo para verificar y luego inicia sesión.");
   } catch (e: any) {
+    if (e?.code === "auth/email-already-in-use") {
+      setAuthError("Ese correo ya está registrado. Usa 'Ingresar' o solicita restablecer contraseña.");
+      return;  
+    }
     setAuthError(e?.message || "Error al crear cuenta");
   }
 }
-
-  async function doLogout() {
-    await signOut(auth);
-  }
+async function doLogout() {
+  await signOut(auth);
+}
 
   // ===================== UI: Login =====================
   if (!authReady) {
